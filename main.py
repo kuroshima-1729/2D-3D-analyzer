@@ -8,7 +8,7 @@ def main():
     parser.add_argument('--input_image_paths', nargs='+', type=str, default=None)
 
     # process setting parameter
-    parser.add_argument('--process_type', choices=['resize', 'concat', 'no_process'], type=str, default=None)
+    parser.add_argument('--process_type', choices=['resize', 'concat', 'to_edge_image', 'no_process'], type=str, default=None)
 
     # resize parameter
     parser.add_argument('--resize_width', type=int, default=None)
@@ -16,6 +16,9 @@ def main():
 
     # concat parameter
     parser.add_argument('--concat_direction', type=str, choices=['vertical', 'horizontal'])
+
+    # to edge image parameter
+    parser.add_argument('--thresholds', type=int, nargs='+', default=None)
 
     # output parameter
     parser.add_argument('--save_image_path', type=str, default=None)
@@ -30,6 +33,8 @@ def main():
             image_data = cv2.vconcat(image_data_list)
         elif args.concat_direction=='horizontal':
             image_data = cv2.hconcat(image_data_list)
+    elif args.process_type=='to_edge_image':
+        image_data = cv2.Canny(image_data, args.thresholds[0], args.thresholds[1])
     elif args.process_type=='no_process':
         pass
 
