@@ -1,5 +1,10 @@
 import argparse
 import cv2
+import torch
+from PIL import Image
+from torchvision import transforms
+import numpy as np
+
 
 
 def main():
@@ -8,7 +13,16 @@ def main():
     parser.add_argument('--input_image_paths', nargs='+', type=str, default=None)
 
     # process setting parameter
-    parser.add_argument('--process_type', choices=['resize', 'concat', 'to_edge_image', 'no_process'], type=str, default=None)
+    parser.add_argument(
+            '--process_type', 
+            choices=[
+                'resize', 
+                'concat', 
+                'to_edge_image', 
+                'image_classification', 
+                'no_process'], 
+            type=str, 
+            default=None)
 
     # resize parameter
     parser.add_argument('--resize_width', type=int, default=None)
@@ -19,6 +33,9 @@ def main():
 
     # to edge image parameter
     parser.add_argument('--thresholds', type=int, nargs='+', default=None)
+
+    # image classification parameter
+    parser.add_argument('--model_name', type=str, choices=['resnet18'], default='resnet18')
 
     # output parameter
     parser.add_argument('--save_image_path', type=str, default=None)
@@ -35,9 +52,61 @@ def main():
             image_data = cv2.hconcat(image_data_list)
     elif args.process_type=='to_edge_image':
         image_data = cv2.Canny(image_data, args.thresholds[0], args.thresholds[1])
+    elif args.process_type=='image_classification':
+        # process of input data
+        image_data = Image.open(args.input_image_paths[0])
+        preprocess = transforms.Compose([
+            transforms.Resize(256), 
+            transforms.CenterCrop(224), 
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], 
+                std=[0.229, 0.224, 0.225])])
+        image_data_tensor = preprocess(image_data)
+        image_data_tensor_batch = image_data_tensor.unsqueeze(0) # increase batch dimension
+
+        # process of model
+        model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet18', weights='ResNet18_Weights.IMAGENET1K_V1')
+        model.eval()
+        if torch.cuda.is_available():
+            image_data_tensor_batch = image_data_tensor_batch.to('cuda')
+            model.to('cuda')
+
+        # process of classification
+        with torch.no_grad():
+            output = model(image_data_tensor_batch)
+
+        #print(output[0])
+        probabilities = torch.nn.functional.softmax(output[0], dim=0)
+        #print(probabilities)
+
+        # show top categories
+        with open("imagenet_labels/imagenet_classes.txt", "r") as file:
+            categories = [s.strip() for s in file.readlines()]
+
+        top5_prob, top5_catid = torch.topk(probabilities, 5)
+        for i in range(top5_prob.size(0)):
+            print(categories[top5_catid[i]], top5_prob[i].item())
+
+        image_data = np.asarray(image_data)
+        image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+        text_location = (100, 100)
+        text_color=(0, 0, 0)
+        font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
+        cv2.putText(
+                image_data, 
+                '{}  {:.3f}'.format(
+                    categories[top5_catid[0]], 
+                    top5_prob[0]), 
+                text_location, 
+                font, 
+                fontScale=2.0, 
+                color=text_color,
+                thickness=3)
+
     elif args.process_type=='no_process':
         pass
-
+    
     cv2.imwrite(args.save_image_path, image_data)
     
 
