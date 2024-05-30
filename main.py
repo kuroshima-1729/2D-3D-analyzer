@@ -19,7 +19,8 @@ def main():
                 'resize', 
                 'concat', 
                 'to_edge_image', 
-                'image_classification', 
+                'image_classification',
+                'object_detection',
                 'no_process'], 
             type=str, 
             default=None)
@@ -35,7 +36,10 @@ def main():
     parser.add_argument('--thresholds', type=int, nargs='+', default=None)
 
     # image classification parameter
-    parser.add_argument('--model_name', type=str, choices=['resnet18'], default='resnet18')
+    parser.add_argument('--classification_model_name', type=str, choices=['resnet18'], default='resnet18')
+
+    # object detection parameter
+    parser.add_argument('--detection_model_name', type=str, choices=['yolo5'], default='yolo5')
 
     # output parameter
     parser.add_argument('--save_image_path', type=str, default=None)
@@ -76,9 +80,7 @@ def main():
         with torch.no_grad():
             output = model(image_data_tensor_batch)
 
-        #print(output[0])
         probabilities = torch.nn.functional.softmax(output[0], dim=0)
-        #print(probabilities)
 
         # show top categories
         with open("imagenet_labels/imagenet_classes.txt", "r") as file:
@@ -91,7 +93,7 @@ def main():
         image_data = np.asarray(image_data)
         image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
         text_location = (100, 100)
-        text_color=(0, 0, 0)
+        text_color=(255, 255, 255)
         font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
         cv2.putText(
                 image_data, 
@@ -103,6 +105,23 @@ def main():
                 fontScale=2.0, 
                 color=text_color,
                 thickness=3)
+    elif args.process_type=='object_detection':
+        # process of model 
+        model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+
+        image_data = cv2.imread(args.input_image_paths[0])
+        #image_data = cv2.cvtColor(image_data, cv2.COLOR_RGB2BGR)
+
+        # Inference
+        results = model([image_data])
+        #results_tensor = results.xyxy[0]
+        #print("results_tensor: {}".format(results_tensor))
+        #results_pandas = results.pandas().xyxy[0]
+        #print(results_pandas)
+
+        image_data = results.render()[0]
+        #print(image_data)
+        
 
     elif args.process_type=='no_process':
         pass
