@@ -20,6 +20,34 @@ def main():
     a = o3c.Tensor(np.array([0, 1, 2]), device=o3c.Device ("CUDA:0"))
     print("\nSpecified device:\n{}".format(a))
 
+    vals = np.array([1, 2, 3])
+    src = o3c.Tensor(vals)
+    dst = src
+    src[0] += 10
+
+    print("Source Tensor:\n{}".format(src))
+    print("\nTarget tensor:\n{}".format(dst))
+
+    vals = np.array((range(24))).reshape(2, 3, 4)
+    a = o3c.Tensor(vals, dtype=o3c.Dtype.Float64, device=o3c.Device("CUDA:0"))
+    print(f"a.shape: {a.shape}")
+    print(f"a.strides: {a.strides}")
+    print(f"a.dtype: {a.dtype}")
+    print(f"a.device: {a.device}")
+    print(f"a.ndim: {a.ndim}")
+
+    a_cpu = o3c.Tensor([0, 1, 2])
+    a_gpu = a_cpu.cuda(0)
+    print(a_gpu)
+
+    a_gpu = o3c.Tensor([0, 1, 2], device=o3c.Device("CUDA:0"))
+    a_cpu = a_gpu.cpu()
+    print(a_cpu)
+
+    a_gpu_0 = o3c.Tensor([0, 1, 2], device=o3c.Device("CUDA:0"))
+    a_gpu_1 = a_gpu_0.cuda(0)
+    print(a_gpu_1)
+
     np_a = np.ones((5,), dtype=np.int32)
     o3_a = o3c.Tensor(np_a)
 
